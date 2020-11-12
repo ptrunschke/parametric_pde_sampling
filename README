@@ -1,21 +1,28 @@
-To create new samples first create a new directoty containing a file `parameters.json`.
-This file must have the following format:
-{
-    "problem": {
-        "name": "darcy"
-    },
-    "fe": {
-        "degree": 1,
-        "mesh": 50
-    },
-    "expansion": {
-        "mean": 1.0,
-        "scale": 0.6,
-        "size": 20,
-        "decay rate": 2.0
-    },
-    "sampling": {
-        "distribution": "uniform",
-        "strategy": "sobol"
+To create and reconstruct from new samples first create a new directoty (in the following referred to as PROBLEM_DIRECTORY)
+containing a file `parameters.json`. This file must have the following format:
+    {
+        "problem": {
+            "name": "darcy"
+        },
+        "fe": {
+            "degree": 1,
+            "mesh": 50
+        },
+        "expansion": {
+            "mean": 1.0,
+            "scale": 0.6,
+            "size": 20,
+            "decay rate": 2.0
+        },
+        "sampling": {
+            "distribution": "uniform",
+            "strategy": "sobol"
+        }
     }
-}
+Then execute the following commands in order:
+$ compute_samples.py PROBLEM_DIRECTORY            # draw new samples for the problem and store them in PROBLEM_DIRECTORY
+$ compute_orthogonalization.py PROBLEM_DIRECTORY  # compute the stiffness matrix and its sparse Cholesky factorization and store them in PROBLEM_DIRECTORY
+$ compute_reconstruction.py PROBLEM_DIRECTORY     # compute the vmc reconstruction of the problem and store it in PROBLEM_DIRECTORY
+
+The script compute_functional.py applies a linear functional to the samples and stores the result in PROBLEM_DIRECTORY.
+These values can be used to compute the l1SALSA or weighted l1 recovery as done in Compressed Sensing Petrov Galerkin.
