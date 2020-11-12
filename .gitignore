@@ -1,0 +1,9 @@
+*.sw[pon]
+__pycache__
+*.pyc
+*.xrs
+*.npz
+*.json
+
+benchmark.py
+orthogonalize_samples.py
