@@ -25,11 +25,12 @@ if __name__=='__main__':
     parser.add_argument('PROBLEM', help='path to the directory where the results will be stored. The problem specification is assumed to lie in (PROBLEM/parameters.json)path to the directory where the samples will be stored. The problem specification is assumed to lie in (PROBLEM/parameters.json)')
     parser.add_argument('SAMPLES', type=int, help='the number of samples to use')
     parser.add_argument('-m', '--modes', dest='MODES', type=int, default=0, help='the number of modes to use (default: all)')
+    parser.add_argument('-s', '--solver', dest='SOLVER', type=str, choices=["uq_ra_adf", "uqSALSA"], default="uq_ra_adf", help='the solver to use (default: uq_ra_adf)')
     args = parser.parse_args()
 
     # basis = "fourier"
-    # basis = "hermite"
-    basis = "unboundedFourier"
+    basis = "hermite"
+    # basis = "unboundedFourier"
 
     problemDir = args.PROBLEM
     if not os.path.isdir(problemDir):
@@ -38,7 +39,7 @@ if __name__=='__main__':
     problemDirContents = os.listdir(problemDir)
     if not 'parameters.json' in problemDirContents:
         raise IOError(f"'{problemDir}' does not contain a 'parameters.json'")
-    reconstructionFile = f"reconstruction_N{args.SAMPLES}_M{args.MODES}_{basis}.xrs"
+    reconstructionFile = f"reconstruction_N{args.SAMPLES}_M{args.MODES}_{basis}_{args.SOLVER}.xrs"
     if reconstructionFile in problemDirContents:
         raise IOError(f"'{problemDir}' already contains other data ('{problemDir}/{reconstructionFile}')")
 
@@ -104,7 +105,7 @@ if __name__=='__main__':
         basis_measures     = lambda m: fourier_basis(y_dims[m], samples[:,m], Phi).T
         basis_basisWeights = lambda m: np.diag(factors[:y_dims[m]])
     elif basis == "hermite":
-        factors = 1/np.sqrt(factorial(np.arange(M)))  # Hermite
+        factors = 1/np.sqrt(factorial(np.arange(max(y_dims))))  # Hermite
         basis_measures     = lambda m: hermeval(samples[:,m], np.diag(factors[:y_dims[m]])).T
         basis_basisWeights = lambda m: np.diag(1/factors[:y_dims[m]]**2)
     elif basis == "unboundedFourier":
@@ -123,11 +124,10 @@ if __name__=='__main__':
     log(f"Compute rank-one measures (basis: {basis})")
     meas = []
     for m in range(M-1):
-        # meas.append(tensor(legval(samples[:,m], np.diag(factors[:y_dims[m]])).T))    # Legendre
-        meas.append(tensor(basis_measures(m)))
+        measm = basis_measures(m)
+        assert measm.shape == (N, y_dims[m])
+        meas.append(tensor(measm))
     assert len(meas) == M-1
-    for m in range(M-1):
-        assert np.shape(meas[m]) == (N, y_dims[m])
 
     vals = tensor(values)
 
@@ -147,65 +147,79 @@ if __name__=='__main__':
 
 
 
+    if args.SOLVER == "uq_ra_adf":
+        # =============
+        #  Use UqRaADF
+        # =============
 
-    # # =============
-    # #  Use UqRaADF
-    # # =============
-    # 
-    # assert np.all(np.asarray(y_dims[1:]) == y_dims[0])
-    # meas = []
-    # for m in range(M-1):
-    #     meas.append(basis_measures(m))
-    # meas = np.transpose(meas, (1,0,2))
-    # assert np.shape(meas) == (numSamples, M-1, y_dims[0]), f"NOT {np.shape(meas)} == {(numSamples, M-1, y_dims[0])}"
-    # meas = [[tensor(cmp_m) for cmp_m in m] for m in meas]
-    # assert values.shape == (numSamples, x_dim)
-    # vals = [tensor(v) for v in values]
-    # log(f"Run reconstruction", flush=True)
-    # reco = xe.uq_ra_adf(meas, vals, [x_dim]+y_dims, targeteps=1e-6, maxitr=5000)
+        # assert np.all(np.asarray(y_dims[1:]) == y_dims[0])
+        # meas = []
+        # for m in range(M-1):
+        #     meas.append(basis_measures(m))
+        # meas = np.transpose(meas, (1,0,2))
+        # assert np.shape(meas) == (numSamples, M-1, y_dims[0]), f"NOT {np.shape(meas)} == {(numSamples, M-1, y_dims[0])}"
+        # meas = [[tensor(cmp_m) for cmp_m in m] for m in meas]
+        # assert values.shape == (numSamples, x_dim)
+        # vals = [tensor(v) for v in values]
+        # log(f"Run reconstruction", flush=True)
+        # reco = xe.uq_ra_adf(meas, vals, [x_dim]+y_dims, targeteps=1e-6, maxitr=5000)
+
+        _meas = []
+        for m in range(M-1):
+            _meas.append(basis_measures(m))
+        # meas = np.transpose(meas, (1,0,2))
+        # assert np.shape(meas) == (numSamples, M-1, y_dims[0]), f"NOT {np.shape(meas)} == {(numSamples, M-1, y_dims[0])}"
+        meas = [list() for _ in range(numSamples)]
+        for mode_meas in _meas:
+            for e,sample_meas in enumerate(mode_meas):
+                meas[e].append(tensor(sample_meas))
+        # meas = [[tensor(cmp_m) for cmp_m in m] for m in meas]
+        assert values.shape == (numSamples, x_dim)
+        vals = [tensor(v) for v in values]
+        log(f"Run reconstruction", flush=True)
+        reco = xe.uq_ra_adf(meas, vals, [x_dim]+y_dims, targeteps=1e-6, maxitr=5000)
+
+    elif args.SOLVER == "uqSALSA":
+        # ===========
+        #  Use SALSA
+        # ===========
+
+        log(f"Compute initial value")
+        init = xe.TTTensor.random([x_dim]+y_dims, [1]*len(y_dims))
+        init.set_component(0, tensor(np.mean(values, axis=0).reshape(1,x_dim,1)))
+        for m in range(len(y_dims)):
+            init.set_component(m+1, xe.Tensor.dirac([1,y_dims[m],1], [0]*3))
+
+        log(f"Run reconstruction", flush=True)
+        solver = xe.uqSALSA(init, meas, vals)
+
+        # Parameters from salsa-uniform-fourier
+        solver.targetResidual = 1e-6
+        solver.maxSweeps = 5000
+        solver.maxStagnatingEpochs = 500
+        solver.maxIRsteps = 10
+        solver.basisWeights = basisWeights
+        solver.maxRanks = [15] + [7]*(M-2)
 
 
+        # solver.targetResidual = 1e-6
+        # solver.trackingPeriodLength = 30
+        # solver.maxSweeps = 5000
+        # solver.maxStagnatingEpochs = 500
+        # # solver.maxIRsteps = 10
+        # # solver.alphaFactor = 10
+        # # solver.omegaFactor = 5
+        # # solver.maxIRsteps = 0
+        # # solver.alphaFactor = 0
+        # solver.falpha = 1.1
+        # solver.fomega = 1.1
+        # solver.basisWeights = basisWeights
+        # solver.maxRanks = [15] + [7]*(M-2)
 
-
-
-    # ===========
-    #  Use SALSA
-    # ===========
-
-    log(f"Compute initial value")
-    init = xe.TTTensor.random([x_dim]+y_dims, [1]*len(y_dims))
-    init.set_component(0, tensor(np.mean(values, axis=0).reshape(1,x_dim,1)))
-    for m in range(len(y_dims)):
-        init.set_component(m+1, xe.Tensor.dirac([1,y_dims[m],1], [0]*3))
-
-    log(f"Run reconstruction", flush=True)
-    solver = xe.uqSALSA(init, meas, vals)
-
-    # Parameters from salsa-uniform-fourier
-    solver.targetResidual = 1e-6
-    solver.maxSweeps = 5000
-    solver.maxStagnatingEpochs = 500
-    solver.maxIRsteps = 10
-    solver.basisWeights = basisWeights
-    solver.maxRanks = [15] + [7]*(M-2)
-
-
-    # solver.targetResidual = 1e-6
-    # solver.trackingPeriodLength = 30
-    # solver.maxSweeps = 5000
-    # solver.maxStagnatingEpochs = 500
-    # # solver.maxIRsteps = 10
-    # # solver.alphaFactor = 10
-    # # solver.omegaFactor = 5
-    # # solver.maxIRsteps = 0
-    # # solver.alphaFactor = 0
-    # solver.falpha = 1.1
-    # solver.fomega = 1.1
-    # solver.basisWeights = basisWeights
-    # solver.maxRanks = [15] + [7]*(M-2)
-
-    solver.run()
-    reco = solver.bestState.x
+        solver.run()
+        reco = solver.bestState.x
+    else:
+        raise NotImplementedError(f"Unknown solver {args.SOLVER}")
 
     log(f"Reconstruction dimensions: {reco.dimensions}")
     log(f"Reconstruction ranks:      {reco.ranks()}")
