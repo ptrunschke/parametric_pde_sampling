@@ -7,6 +7,13 @@ import numpy as np
 class TestField:
     """
     Artificial M-term KL (plane wave Fourier modes similar to those in EGSZ).
+    Diffusion coefficient reads (in linear case)
+
+        a(x,y) = mean + scale * \sum_{m=1}^M (m+1)^decay y_m \sin(\pi b_1 x_1) \sin(\pi b_2 x_2)
+
+    for b_1 = floor( (m+2)/2 ) and b_2 = ceil( (m+2)/2 ). In exponential case,
+
+        b(x,y) = exp(a(x,y)).
 
     The field is log-normal for expfield=True.
 
@@ -97,5 +104,5 @@ class TestField:
                 x *= linear_part(np.ones(self.M), [ki])
 
         f = Function(V)
-        f.vector()[:] = x
+        f.vector().set_local(x)
         return f
