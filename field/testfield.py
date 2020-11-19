@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
-from dolfin import interpolate, Expression, Function
+from dolfin import interpolate, Expression, Function, Constant
 import numpy as np
+from scipy.special import zeta
 
 
 class TestField:
@@ -105,4 +106,85 @@ class TestField:
 
         f = Function(V)
         f.vector().set_local(x)
+        return f
+
+class TestFieldEGSZ13:
+    """
+    The diffusion coefficient as in [EGSZ13] reads
+
+        a(x,y) = a_0(x) + \sum_{m=1}^M y_m a_m(x)
+
+    for a_0(x) = 1 and
+
+        a_m(x) = \bar(alpha) m^{-\tilde{sigma}} \cos(2\pi\beta_1(m) x_1) \cos(2\pi\beta_2(m) x_2).
+
+    Here for k(m) = floor( -1/2 + \sqrt{1/4 +2m} ), we set
+
+        \beta_1(m) = m - k(m) (k(m)+1)/2         and        \beta_2(m) = k(m) - \beta_1(m)
+
+    We choose for \gamma=0.9, that \bar{\alpha} = \gamma / \zeta{\tilde{sigma}}
+    where \zeta is the Riemann zeta function.
+
+    Parameters:
+    -----------
+    M : int
+        Number of terms in expansion.
+    decay : float
+        Decay rate for the terms.
+    mean : float, optional
+        Mean value of the field. (defaults to 1.0)
+    expfield : bool
+        If true, return exp( a(x,y) ) instead of a(x,y)
+    """
+    def __init__(self, M, decay, mean=1.0, expfield=False):
+        assert M > 0, 'number of terms in expansion has to be positive'
+        assert decay >= 0
+        # TODO assert that return is positive
+        # create a Fenics expression of the affine field
+        self.a = Expression('cos(2*pi*F1*x[0]) * cos(2*pi*F2*x[1])', F1=0, F2=0, degree=10)
+        self.M = M
+        self.mean = mean # a_0(x)
+        self.decay = decay # \tilde{sigma}
+        self.gamma = 0.9
+        self.a_bar = self.gamma/zeta(self.decay)
+        self.expfield = expfield
+
+    def realisation(self, y, V):  # type: (List[float], FunctionSpace) -> Function
+        """
+        Compute an interpolation of the random field on the FEM space V for the given sample y.
+
+        Parameters:
+        -----------
+        y : list of floats
+            Parameters.
+        V : FunctionSpace
+
+        Returns
+        -------
+        out : ndarray
+            FEM coefficients for the field realisation.
+        """
+        assert len(y) == self.M, 'number of parameters differs from the number of terms in the expansion'
+        a = self.a
+
+        def k(m): return np.floor(-0.5+np.sqrt(0.25 + 2*m))
+        def beta1(m): return m - k(m) * (k(m)+1)/2
+        def beta2(m): return k(m) - beta1(m)
+
+        def summand(f1, f2): # this is: cos(1\pi\beta1(m) x_1) cos(2\pi\beta2(m) x_2)
+            a.F1, a.F2 = f1, f2
+            return interpolate(a, V).vector().get_local()
+
+        def linear_part(ys, ms): # this is: sum_{m=1}^M y_m * a_m(x)
+            x = Function(V).vector().get_local()  # zero
+            assert np.all(x == 0)
+            for m in ms:
+                # NOTE index ys[m-1] requires m-1, since m=1,...,M
+                x += ys[m-1] * self.a_bar * m**(-self.decay) * summand(beta1(m),beta2(m))
+            return x
+
+        a_val = self.mean + linear_part(y, range(1,self.M+1))
+        if self.expfield: a_val = np.exp(a_val)
+        f = Function(V)
+        f.vector().set_local(a_val)
         return f

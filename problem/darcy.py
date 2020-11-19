@@ -2,7 +2,7 @@
 from __future__ import division, print_function
 from dolfin import *
 set_log_level(LogLevel.WARNING)
-from field.testfield import TestField
+from field.testfield import TestField, TestFieldEGSZ13
 from .parallel import ParallelizableProblem
 
 
@@ -21,6 +21,7 @@ class Problem(ParallelizableProblem):
         decay = -self.info['expansion']['decay rate']
         expfield = self.info['sampling']['distribution'] == 'normal'
         self.field = TestField(M, mean=mean, scale=scale, decay=decay, expfield=expfield)
+        # self.field = TestFieldEGSZ13(M, decay=-decay, mean=mean, expfield=expfield) # NOTE [EGSZ13] coefficient
 
         # define forcing term
         self.forcing = Constant(1)
@@ -29,6 +30,18 @@ class Problem(ParallelizableProblem):
         self.bc = DirichletBC(self.space, Constant(0.0), 'on_boundary')
 
     def solution(self, y):
+        """
+        Return solution of Darcy problem for given parameter realization y.
+
+        Parameter
+        ---------
+        y   :   array_like
+                Sample for realization of the problem.
+
+        Returns
+        -------
+        u   :   solution vector (numpy array)
+        """
         V = self.space
         f = self.forcing
         bc = self.bc
