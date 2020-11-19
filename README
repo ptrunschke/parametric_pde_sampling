@@ -1,3 +1,4 @@
+# Usage
 To create and reconstruct from new samples first create a new directoty (in the following referred to as PROBLEM_DIRECTORY)
 containing a file `parameters.json`. This file must have the following format:
     {
@@ -26,3 +27,8 @@ $ compute_reconstruction.py PROBLEM_DIRECTORY     # compute the vmc reconstructi
 
 The script compute_functional.py applies a linear functional to the samples and stores the result in PROBLEM_DIRECTORY.
 These values can be used to compute the l1SALSA or weighted l1 recovery as done in Compressed Sensing Petrov Galerkin.
+
+# Notes
+
+For Darcy with lognormal coefficient you need to choose a proper scale s.t. the resulting PDE-Operator is still coercive.
+For any decay > 2.0 you can choose 6/pi**2 since this is the reciprocal of sum(1/n**2 for n in range(1, infty)).
