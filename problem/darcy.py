@@ -13,6 +13,7 @@ class Problem(ParallelizableProblem):
 
         # setup fe space
         self.space = FunctionSpace(self.mesh, 'CG', self.degree)
+        self.space_coef = FunctionSpace(self.mesh, 'DG', self.degree-1)
 
         # setup random field
         M = self.info['expansion']['size']
@@ -43,10 +44,11 @@ class Problem(ParallelizableProblem):
         u   :   solution vector (numpy array)
         """
         V = self.space
+        Vc = self.space_coef
         f = self.forcing
         bc = self.bc
 
-        kappa = self.field.realisation(y, V)
+        kappa = self.field.realisation(y, Vc)
 
         u = TrialFunction(V)
         v = TestFunction(V)
@@ -64,8 +66,9 @@ class Problem(ParallelizableProblem):
         assert y.shape == (M,)
 
         V = self.space
+        Vc = self.space_coef
         f = self.forcing
-        kappa = self.field.realisation(y, V)
+        kappa = self.field.realisation(y, Vc)
 
         u = TrialFunction(V)
         v = TestFunction(V)
@@ -85,8 +88,9 @@ class Problem(ParallelizableProblem):
         assert y.shape == (M,)
 
         V = self.space
+        Vc = self.space_coef
         f = self.forcing
-        kappa = self.field.realisation(y, V)
+        kappa = self.field.realisation(y, Vc)
 
         u = TrialFunction(V)
         v = TestFunction(V)
@@ -103,32 +107,33 @@ class Problem(ParallelizableProblem):
         return res
 
     def P1_residual_estimator(self, y_u):
-        y,u_vec = y_u
         V = self.space
-        u = Function(V)
-        u.vector()[:] = u_vec
-        f = self.forcing
-        kappa = self.field.realisation(y, V)
+        Vc = self.space_coef
 
-        # setup indicator
         mesh = V.mesh()
-        h = CellSize(mesh)
+        try: h = CellDiameter(V.mesh())
+        except NameError: h = CellSize(V.mesh())
         DG0 = FunctionSpace(mesh, 'DG', 0)
         dg0 = TestFunction(DG0)
 
-        kappa = self.field.realisation(y, V)
+        y,u_vec = y_u
+        u = Function(V)
+        u.vector().set_local(u_vec)
+        f = self.forcing
+        kappa = self.field.realisation(y, Vc)
+
         R_T = -(f + div(kappa * grad(u)))
         R_dT = kappa * grad(u)
         J = jump(R_dT)
-        indicator = h ** 2 * (1 / kappa) * R_T ** 2 * dg0 * dx + avg(h) * avg(1 / kappa) * J **2 * 2 * avg(dg0) * dS
+        indicator = h**2 * (1 / kappa) * R_T**2 * dg0 * dx \
+                  + avg(h) * avg(1 / kappa) * J**2 * avg(dg0) * 2*dS
 
-        # prepare indicators
         eta_res_local = assemble(indicator, form_compiler_parameters={'quadrature_degree': -1})
         return eta_res_local.get_local()
 
     def refine_mesh(self, marked_cells):
         marker = MeshFunction("bool", self.mesh, self.mesh.topology().dim())
         marker.set_all(False)
-        marker[marked_cells] = True  # for idx in marked_cells: marker[idx] = True
+        marker.array()[marked_cells] = True  # for idx in marked_cells: marker[idx] = True
         self.mesh = refine(self.mesh, marker)
         self.space = FunctionSpace(self.mesh, 'CG', self.degree)
