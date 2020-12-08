@@ -22,13 +22,22 @@ class Problem(ParallelizableProblem):
         decay = -self.info['expansion']['decay rate']
         expfield = self.info['sampling']['distribution'] == 'normal'
         self.field = TestField(M, mean=mean, scale=scale, decay=decay, expfield=expfield)
-        # self.field = TestFieldEGSZ13(M, decay=-decay, mean=mean, expfield=expfield) # NOTE [EGSZ13] coefficient
+        # self.field = TestFieldEGSZ13(M, decay=-decay, mean=mean, expfield=expfield)
 
         # define forcing term
         self.forcing = Constant(1)
 
         # define boundary condition
         self.bc = DirichletBC(self.space, Constant(0.0), 'on_boundary')
+
+    def coefficient(self, y):
+        Vc = self.space_coef
+        return self.field.realisation(y, Vc)
+
+    def coefficient_vector(self, y):
+        Vc = self.space_coef
+        kappa = self.coefficient(y)
+        return interpolate(kappa, Vc).vector().get_local()
 
     def solution(self, y):
         """
@@ -44,11 +53,9 @@ class Problem(ParallelizableProblem):
         u   :   solution vector (numpy array)
         """
         V = self.space
-        Vc = self.space_coef
         f = self.forcing
         bc = self.bc
-
-        kappa = self.field.realisation(y, Vc)
+        kappa = self.coefficient(y)
 
         u = TrialFunction(V)
         v = TestFunction(V)
@@ -66,16 +73,14 @@ class Problem(ParallelizableProblem):
         assert y.shape == (M,)
 
         V = self.space
-        Vc = self.space_coef
         f = self.forcing
-        kappa = self.field.realisation(y, Vc)
+        bc = self.bc
+        kappa = self.coefficient(y)
 
         u = TrialFunction(V)
         v = TestFunction(V)
         a = kappa * inner(grad(u), grad(v)) * dx
         L = f * v * dx
-
-        bc = DirichletBC(V, Constant(0.0), 'on_boundary')
 
         A, b = assemble_system(a, L, bc)
         u = Function(V).vector()

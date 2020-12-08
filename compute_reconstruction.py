@@ -66,6 +66,7 @@ if __name__=='__main__':
     elif numSamples > args.SAMPLES:
         samples[-1] = samples[-1][:-(numSamples-args.SAMPLES)]
         values[-1]  = values[-1][:-(numSamples-args.SAMPLES)]
+    del numSamples
 
     samples = np.concatenate(samples, axis=0)
     values = np.concatenate(values, axis=0)
@@ -169,12 +170,12 @@ if __name__=='__main__':
             _meas.append(basis_measures(m))
         # meas = np.transpose(meas, (1,0,2))
         # assert np.shape(meas) == (numSamples, M-1, y_dims[0]), f"NOT {np.shape(meas)} == {(numSamples, M-1, y_dims[0])}"
-        meas = [list() for _ in range(numSamples)]
+        meas = [list() for _ in range(args.SAMPLES)]
         for mode_meas in _meas:
             for e,sample_meas in enumerate(mode_meas):
                 meas[e].append(tensor(sample_meas))
         # meas = [[tensor(cmp_m) for cmp_m in m] for m in meas]
-        assert values.shape == (numSamples, x_dim)
+        assert values.shape == (args.SAMPLES, x_dim), f"{values.shape} != {(args.SAMPLES, x_dim)}"
         vals = [tensor(v) for v in values]
         log(f"Run reconstruction", flush=True)
         reco = xe.uq_ra_adf(meas, vals, [x_dim]+y_dims, targeteps=1e-6, maxitr=5000)
