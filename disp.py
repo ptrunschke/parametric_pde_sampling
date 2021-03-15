@@ -48,7 +48,9 @@ if __name__=='__main__':
   shape: {ys.shape}
   Mean(ys) \u2208 [{np.min(mean): .0e}, {np.max(mean): .0e}]
   Var(ys)  \u2208 [{np.min(var): .0e}, {np.max(var): .0e}]
-  Maximum relative variance: {100*np.max(var[mask]/abs(mean[mask])):.0f}%""")
+  Minimum relative variance: {100*np.min(var[mask]/abs(mean[mask])):.0f}%
+  Maximum relative variance: {100*np.max(var[mask]/abs(mean[mask])):.0f}%
+  Mean relative variance: {100*np.mean(var[mask]/abs(mean[mask])):.0f}%""")
 
         for name in ["ks", "us"]:
             arr = globals()[name]
@@ -59,5 +61,7 @@ if __name__=='__main__':
   shape: {arr.shape}  
   Mean({name}(x)) \u2208 [{np.min(mean): .0e}, {np.max(mean): .0e}]
   Var({name}(x))  \u2208 [{np.min(var): .0e}, {np.max(var): .0e}]
-  Maximum relative variance: {100*np.max(var[mask]/abs(mean[mask])):.0f}%""")
+  Minimum relative variance: {100*np.min(var[mask]/abs(mean[mask])):.0f}%
+  Maximum relative variance: {100*np.max(var[mask]/abs(mean[mask])):.0f}%
+  Mean relative variance: {100*np.mean(var[mask]/abs(mean[mask])):.0f}%""")
     print("="*80)
