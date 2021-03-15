@@ -70,16 +70,26 @@ def compute_batch(_batchSize, _storage):
         raise RuntimeError(f"Invalid value encountered in output of sampler: {np.count_nonzero(~np.all(np.isfinite(ys), axis=1))} samples are not finite.")
 
     pool = mp.Pool()
-    results = pool.map_async(problem.solution, ys).get()
+    ks = pool.map_async(problem.coefficient_vector, ys)
+    us = pool.map_async(problem.solution, ys)
+    ks = ks.get()
+    us = us.get()
     pool.close()
     pool.join()
-    us = np.array(results)
+
+    ks = np.array(ks)
+    if not np.all(np.isfinite(ks)):
+        raise RuntimeError(f"Invalid value encountered in output of problem.solution: {np.count_nonzero(~np.all(np.isfinite(ks), axis=1))} samples are not finite.")
+    if len(ys) != len(ks):
+        raise RuntimeError(f"Number of Samples and number of Solutions differ: {len(ys)} != {len(ks)}")
+
+    us = np.array(us)
     if not np.all(np.isfinite(us)):
         raise RuntimeError(f"Invalid value encountered in output of problem.solution: {np.count_nonzero(~np.all(np.isfinite(us), axis=1))} samples are not finite.")
-
     if len(ys) != len(us):
         raise RuntimeError(f"Number of Samples and number of Solutions differ: {len(ys)} != {len(us)}")
-    _storage << dict(ys=ys, us=us)
+
+    _storage << dict(ys=ys, ks=ks, us=us)
 
 def isInt(s):
     try:
@@ -87,6 +97,17 @@ def isInt(s):
         return True
     except:
         return False
+
+def load_parameters(problemDir):
+    problemFile = f"{problemDir}/parameters.json"
+    try:
+        with open(problemFile, 'r') as f:
+            problemInfo = json.load(f)
+    except FileNotFoundError:
+        raise IOError(f"Can not read file '{problemFile}'")
+    except json.JSONDecodeError:
+        raise IOError(f"'{problemFile}' is not a valid JSON file")
+    return problemInfo
 
 
 if __name__=='__main__':
@@ -108,15 +129,7 @@ if __name__=='__main__':
         if fileName.endswith('.npz') and isInt(fileName[:-4]):
             raise IOError(f"'{problemDir}' already contains other data ('{problemDir}/{fileName}')")
 
-    problemFile = f"{problemDir}/parameters.json"
-    try:
-        with open(problemFile, 'r') as f:
-            problemInfo = json.load(f)
-    except FileNotFoundError:
-        raise IOError(f"Can not read file '{problemFile}'")
-    except json.JSONDecodeError:
-        raise IOError(f"'{problemFile}' is not a valid JSON file")
-
+    problemInfo = load_parameters(problemDir)
     problem, sampler = load_problem_and_sampler(problemInfo)
     storage = NPZStorageDirectory(problemDir)
 

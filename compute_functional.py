@@ -5,7 +5,6 @@ import numpy as np
 from numpy.polynomial.legendre import legval
 from numpy.polynomial.hermite_e import hermeval
 from scipy.special import factorial
-import xerus as xe
 
 def log(*args, **kwargs):
     print(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()), *args, **kwargs)
@@ -17,8 +16,6 @@ def isInt(s):
     except:
         return False
 
-tensor = lambda arr: xe.Tensor.from_buffer(np.ascontiguousarray(arr))
-
 def isFunctional(s):
     if s not in ["mean"]:#, "max"]:
         raise ValueError(f"Unknown functional '{s}'")
@@ -27,8 +24,8 @@ def isFunctional(s):
 if __name__=='__main__':
     descr = """Compute linear functional for the samples of the given problem."""
     parser = argparse.ArgumentParser(description=descr)
-    parser.add_argument('PROBLEM', help='path to the directory where the results will be stored. The problem specification is assumed to lie in (PROBLEM/parameters.json)path to the directory where the samples will be stored. The problem specification is assumed to lie in (PROBLEM/parameters.json)')
-    parser.add_argument('-f', '--functional', dest='FUNCTIONAL', type=isFunctional, default='mean', help='the functional to apply')
+    parser.add_argument('PROBLEM', help='Path to the directory where the results will be stored. The problem specification is assumed to lie in (PROBLEM/parameters.json)')
+    parser.add_argument('-f', '--functional', dest='FUNCTIONAL', type=isFunctional, default='mean', choices=['mean'], help='the functional to apply')
     args = parser.parse_args()
 
     problemDir = args.PROBLEM
