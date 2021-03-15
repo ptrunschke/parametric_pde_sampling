@@ -28,7 +28,7 @@ containing a file `parameters.json`. This file must have the following format:
 ```
 Then execute the following command:
 ```bash
-$ compute_samples.py PROBLEM_DIRECTORY            # draw new samples for the problem and store them in PROBLEM_DIRECTORY
+$ python compute_samples.py PROBLEM_DIRECTORY            # draw new samples for the problem and store them in PROBLEM_DIRECTORY
 ```
 
 
@@ -36,8 +36,8 @@ $ compute_samples.py PROBLEM_DIRECTORY            # draw new samples for the pro
 
 To reconstruct a function from existing samples execute the following commands in order:
 ```bash
-$ compute_orthogonalization.py PROBLEM_DIRECTORY  # compute the stiffness matrix and its sparse Cholesky factorization and store them in PROBLEM_DIRECTORY
-$ compute_reconstruction.py PROBLEM_DIRECTORY     # compute the vmc reconstruction of the problem and store it in PROBLEM_DIRECTORY
+$ python compute_orthogonalization.py PROBLEM_DIRECTORY  # compute the stiffness matrix and its sparse Cholesky factorization and store them in PROBLEM_DIRECTORY
+$ python compute_reconstruction.py PROBLEM_DIRECTORY     # compute the vmc reconstruction of the problem and store it in PROBLEM_DIRECTORY
 ```
 
 
@@ -51,5 +51,5 @@ These values can be used to compute the l1SALSA or weighted l1 recovery as done 
 # Notes
 
 For Darcy with lognormal coefficient you need to choose a proper scale s.t. the resulting PDE-Operator is still coercive.
-For any decay > 2.0 you can choose 6/pi**2 since this is the reciprocal of sum(1/n**2 for n in range(1, infty)).
-For decay == 1 and size == 20 you can use 0.2779522965244017051270673922432532848716135458434908413850884393.
+For any `decay > 2.0` you can choose `6/pi**2` since this is the reciprocal of `sum(1/n**2 for n in range(1, infty))`.
+For `decay == 1` and `size == 20` you can use `0.2779522965244017051270673922432532848716135458434908413850884393`.
