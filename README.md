@@ -1,6 +1,9 @@
 # Usage
 
-To compute new samples first create a new directoty (in the following referred to as `PROBLEM_DIRECTORY`)
+
+## Computing new samples
+
+First create a new directoty (in the following referred to as `PROBLEM_DIRECTORY`)
 containing a file `parameters.json`. This file must have the following format:
 ```json
     {
@@ -23,15 +26,27 @@ containing a file `parameters.json`. This file must have the following format:
         }
     }
 ```
-Then execute the following commands in order:
+Then execute the following command:
 ```bash
 $ compute_samples.py PROBLEM_DIRECTORY            # draw new samples for the problem and store them in PROBLEM_DIRECTORY
+```
+
+
+## Reconstructing from existing samples
+
+To reconstruct a function from existing samples execute the following commands in order:
+```bash
 $ compute_orthogonalization.py PROBLEM_DIRECTORY  # compute the stiffness matrix and its sparse Cholesky factorization and store them in PROBLEM_DIRECTORY
 $ compute_reconstruction.py PROBLEM_DIRECTORY     # compute the vmc reconstruction of the problem and store it in PROBLEM_DIRECTORY
 ```
 
+
+## Computing functionals of existing samples
+
 The script `compute_functional.py` applies a linear functional to the samples and stores the result in `PROBLEM_DIRECTORY`.
 These values can be used to compute the l1SALSA or weighted l1 recovery as done in Compressed Sensing Petrov Galerkin.
+
+
 
 # Notes
 
