@@ -2,7 +2,7 @@
 
 First create a new directoty (in the following referred to as `PROBLEM_DIRECTORY`)
 containing a file `parameters.json`. This file must have the following format:
-```
+```json
     {
         "problem": {
             "name": "darcy"
