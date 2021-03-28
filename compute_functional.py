@@ -17,7 +17,7 @@ def isInt(s):
         return False
 
 def isFunctional(s):
-    if s not in ["mean"]:#, "max"]:
+    if s not in ["integral"]:#, "max"]:
         raise ValueError(f"Unknown functional '{s}'")
     return s
 
@@ -25,7 +25,7 @@ if __name__=='__main__':
     descr = """Compute linear functional for the samples of the given problem."""
     parser = argparse.ArgumentParser(description=descr)
     parser.add_argument('PROBLEM', help='Path to the directory where the results will be stored. The problem specification is assumed to lie in (PROBLEM/parameters.json)')
-    parser.add_argument('-f', '--functional', dest='FUNCTIONAL', type=isFunctional, default='mean', choices=['mean'], help='the functional to apply')
+    parser.add_argument('-f', '--functional', dest='FUNCTIONAL', type=isFunctional, default='integral', choices=['integral'], help='the functional to apply')
     args = parser.parse_args()
 
     problemDir = args.PROBLEM
@@ -39,7 +39,7 @@ if __name__=='__main__':
     if functionalFile in problemDirContents:
         raise IOError(f"'{problemDir}' already contains other data ('{problemDir}/{functionalFile}')")
 
-    if args.FUNCTIONAL == "mean":
+    if args.FUNCTIONAL == "integral":
         from compute_orthogonalization import load_problem, get_mass_matrix
         problemFile = f"{problemDir}/parameters.json"
         try:
