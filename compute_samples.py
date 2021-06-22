@@ -1,9 +1,14 @@
 # coding: utf-8
 import argparse, os, json, time
-import multiprocessing as mp
+# import multiprocessing as mp
 
 import numpy as np
 import sobol
+from joblib import Parallel, delayed
+
+
+N_JOBS = -1
+
 
 def log(*args, **kwargs):
     print(time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime()), *args, **kwargs)
@@ -69,13 +74,17 @@ def compute_batch(_batchSize, _storage):
     if not np.all(np.isfinite(ys)):
         raise RuntimeError(f"Invalid value encountered in output of sampler: {np.count_nonzero(~np.all(np.isfinite(ys), axis=1))} samples are not finite.")
 
-    pool = mp.Pool()
-    ks = pool.map_async(problem.coefficient_vector, ys)
-    us = pool.map_async(problem.solution, ys)
-    ks = ks.get()
-    us = us.get()
-    pool.close()
-    pool.join()
+
+    ks = Parallel(n_jobs=N_JOBS)(map(delayed(problem.coefficient_vector), ys))
+    us = Parallel(n_jobs=N_JOBS)(map(delayed(problem.solution), ys))
+
+    # pool = mp.Pool()
+    # ks = pool.map_async(problem.coefficient_vector, ys)
+    # us = pool.map_async(problem.solution, ys)
+    # ks = ks.get()
+    # us = us.get()
+    # pool.close()
+    # pool.join()
 
     ks = np.array(ks)
     if not np.all(np.isfinite(ks)):
