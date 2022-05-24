@@ -3,7 +3,7 @@ from __future__ import division, print_function
 from dolfin import *
 
 set_log_level(LogLevel.WARNING)
-from vmc_sampling.field.testfield import TestField, TestFieldEGSZ13
+from parametric_pde_sampling.field.testfield import TestField, TestFieldEGSZ13
 from .parallel import ParallelizableProblem
 
 
